@@ -36,6 +36,36 @@ impl Uri {
     pub fn fragment(&self) -> &str {
         &self.fragment
     }
+
+    /// Set the uri's protocol.
+    pub fn set_protocol(&mut self, protocol: &str) {
+        self.protocol = protocol.into();
+    }
+
+    /// Set the uri's host.
+    pub fn set_host(&mut self, host: &str) {
+        self.host = host.into();
+    }
+
+    /// Set the uri's port.
+    pub fn set_port(&mut self, port: &str) {
+        self.port = port.into();
+    }
+
+    /// Set the uri's path.
+    pub fn set_path(&mut self, path: &str) {
+        self.path = path.into();
+    }
+
+    /// Set the uri's query.
+    pub fn set_query(&mut self, query: &str) {
+        self.query = query.into();
+    }
+
+    /// Set the uri's fragment.
+    pub fn set_fragment(&mut self, fragment: &str) {
+        self.fragment = fragment.into();
+    }
 }
 
 impl FromStr for Uri {
