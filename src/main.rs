@@ -5,7 +5,6 @@ fn main() {
     let _uri = uri::Uri::from_str("");
 }
 
-
-pub mod uri;
-pub mod html;
 pub mod graph;
+pub mod html;
+pub mod uri;
