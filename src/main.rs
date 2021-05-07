@@ -7,3 +7,5 @@ fn main() {
 
 
 pub mod uri;
+pub mod html;
+pub mod graph;
