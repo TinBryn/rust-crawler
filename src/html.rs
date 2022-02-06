@@ -1,4 +1,4 @@
-use crate::uri::Uri;
+use crate::uri::{Uri, UriBuilder};
 
 fn clean_up_href(href: &str) -> String {
     href.replace(" ", "%20")
@@ -19,34 +19,36 @@ fn get_urls_from_page(
             continue;
         }
 
-        let mut href_uri: Uri = match href.parse() {
-            Ok(uri) => uri,
+        let mut href_uri: UriBuilder = match href.parse::<Uri>() {
+            Ok(uri) => UriBuilder::from(uri
+            ),
             Err(e) => {
                 errors.push(format!("{} in url {}", e, href));
                 continue;
             }
         };
-        if href_uri.protocol().is_empty() {
-            href_uri.set_protocol(parent_uri.protocol());
+        if href_uri.uri.protocol.is_empty() {
+            href_uri = href_uri.protocol(&parent_uri.protocol);
         }
 
-        if href_uri.host().is_empty() && href_uri.path().starts_with("//") {
-            let find = href_uri.path()[2..]
+        if href_uri.uri.host.is_empty() && href_uri.uri.path.starts_with("//") {
+            let find = href_uri.uri.path[2..]
                 .find('/')
-                .map_or(href_uri.path().len(), |f| f + 2);
-            let path = String::from(href_uri.path());
-            href_uri.set_host(&path[2..(find - 2)]);
-            href_uri.set_path(&path[find..]);
+                .map_or(href_uri.uri.path.len(), |f| f + 2);
+            let path = String::from(&href_uri.uri.path);
+            href_uri = href_uri.host(&path[2..(find - 2)]);
+            href_uri = href_uri.path(&path[find..]);
         }
-        if href_uri.host().is_empty() || href_uri.host() == "." {
-            href_uri.set_host(parent_uri.host());
-            href_uri.set_port(parent_uri.port());
-            href_uri.set_path(&absolutize_path(href_uri.path(), parent_uri.path()));
+        if href_uri.uri.host.is_empty() || href_uri.uri.host == "." {
+            href_uri = href_uri.host(&parent_uri.host);
+            href_uri = href_uri.port(&parent_uri.port);
+            let abs_path = absolutize_path(&href_uri.uri.path, &parent_uri.path);
+            href_uri = href_uri.path(&abs_path);
         }
 
-        href_uri.set_fragment("");
+        href_uri = href_uri.fragment("");
 
-        urls.push(href_uri);
+        urls.push(href_uri.build());
     }
 }
 
@@ -109,11 +111,9 @@ pub fn absolutize_path(path: &str, base_path: &str) -> String {
         }
     }
 
-    let mut result = out
+    let result = out
         .iter()
         .fold(String::new(), |res, &s| format!("{}/{}", res, s));
-
-    result.push('/');
 
     result
 }

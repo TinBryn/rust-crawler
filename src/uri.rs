@@ -3,68 +3,69 @@ use std::{fmt::Display, str::FromStr};
 use regex::Regex;
 
 #[derive(Debug, Default)]
+pub struct UriBuilder {
+    pub uri: Uri,
+}
+
+impl UriBuilder {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn build(self) -> Uri {
+        self.uri
+    }
+
+    pub fn protocol(mut self, protocol: impl Into<String>) -> Self {
+        self.uri.protocol = protocol.into();
+        self
+    }
+
+    pub fn host(mut self, host: impl Into<String>) -> Self {
+        self.uri.host = host.into();
+        self
+    }
+
+    pub fn port(mut self, port: impl Into<String>) -> Self {
+        self.uri.port = port.into();
+        self
+    }
+
+    pub fn path(mut self, path: impl Into<String>) -> Self {
+        self.uri.path = path.into();
+        self
+    }
+
+    pub fn query(mut self, query: impl Into<String>) -> Self {
+        self.uri.query = query.into();
+        self
+    }
+
+    pub fn fragment(mut self, fragment: impl Into<String>) -> Self {
+        self.uri.fragment = fragment.into();
+        self
+    }
+}
+
+impl From<Uri> for UriBuilder {
+    fn from(uri: Uri) -> Self {
+        Self { uri }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Uri {
-    protocol: String,
-    host: String,
-    port: String,
-    path: String,
-    query: String,
-    fragment: String,
+    pub protocol: String,
+    pub host: String,
+    pub port: String,
+    pub path: String,
+    pub query: String,
+    pub fragment: String,
 }
 
 impl Uri {
-    pub fn protocol(&self) -> &str {
-        &self.protocol
-    }
-
-    pub fn host(&self) -> &str {
-        &self.host
-    }
-
-    pub fn port(&self) -> &str {
-        &self.port
-    }
-
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-
-    pub fn query(&self) -> &str {
-        &self.query
-    }
-
-    pub fn fragment(&self) -> &str {
-        &self.fragment
-    }
-
-    /// Set the uri's protocol.
-    pub fn set_protocol(&mut self, protocol: &str) {
-        self.protocol = protocol.into();
-    }
-
-    /// Set the uri's host.
-    pub fn set_host(&mut self, host: &str) {
-        self.host = host.into();
-    }
-
-    /// Set the uri's port.
-    pub fn set_port(&mut self, port: &str) {
-        self.port = port.into();
-    }
-
-    /// Set the uri's path.
-    pub fn set_path(&mut self, path: &str) {
-        self.path = path.into();
-    }
-
-    /// Set the uri's query.
-    pub fn set_query(&mut self, query: &str) {
-        self.query = query.into();
-    }
-
-    /// Set the uri's fragment.
-    pub fn set_fragment(&mut self, fragment: &str) {
-        self.fragment = fragment.into();
+    pub fn builder() -> UriBuilder {
+        UriBuilder::new()
     }
 }
 
@@ -72,14 +73,18 @@ impl FromStr for Uri {
     type Err = String;
 
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        let mut result = Uri::default();
-
         if url.is_empty() {
-            return Ok(result);
+            return Ok(Uri::default());
         }
 
-        let mut query_start = url.find('?').unwrap_or_else(|| url.len());
-        let fragment_start = url.find('#').unwrap_or_else(|| url.len());
+        let mut protocol = String::default();
+        let mut host = String::default();
+        let mut port = String::default();
+
+        let end = url.len();
+
+        let query_start = url.find('?').unwrap_or(end);
+        let fragment_start = url.find('#').unwrap_or(end);
 
         let mut path_start;
 
@@ -87,7 +92,7 @@ impl FromStr for Uri {
             let prot = &url[protocol_end..];
 
             let host_start = if prot.len() > 3 && &prot[0..3] == "://" {
-                result.protocol = String::from(&url[0..protocol_end]);
+                protocol = String::from(&url[0..protocol_end]);
                 protocol_end + 3 // skipping over the "://"
             } else {
                 0 // no protocol
@@ -99,10 +104,10 @@ impl FromStr for Uri {
 
             let mut host_end = url[host_start..path_start].find(':').unwrap_or(path_start);
 
-            result.host = String::from(&url[host_start..host_end]);
+            host = String::from(&url[host_start..host_end]);
 
-            if result.host == "." {
-                result.host = String::new();
+            if host == "." {
+                host = String::new();
                 path_start += 1;
             }
 
@@ -110,48 +115,61 @@ impl FromStr for Uri {
             if (host_end != url.len()) && &url[host_end..host_end + 1] == ":" {
                 host_end += 1;
                 let port_end = path_start;
-                result.port = String::from(&url[host_end..port_end]);
+                port = String::from(&url[host_end..port_end]);
             }
         } else {
             path_start = 0;
         }
 
-        if query_start > fragment_start {
-            query_start = fragment_start;
-        }
+        let query_start = if query_start > fragment_start {
+            fragment_start
+        } else {
+            query_start
+        };
 
         // path
-        if path_start != url.len() {
-            result.path = String::from(&url[path_start..query_start]);
-        }
+        let path = if path_start != url.len() {
+            String::from(&url[path_start..query_start])
+        } else {
+            String::default()
+        };
 
         // query
-        if query_start != url.len() && query_start != fragment_start {
-            result.query = String::from(&url[(query_start + 1)..fragment_start]);
-        }
+        let query = if query_start != url.len() && query_start != fragment_start {
+            String::from(&url[(query_start + 1)..fragment_start])
+        } else {
+            String::default()
+        };
 
-        if fragment_start != url.len() {
-            result.fragment = String::from(&url[(fragment_start + 1)..]);
-        }
+        let fragment = if fragment_start != url.len() {
+            String::from(&url[(fragment_start + 1)..])
+        } else {
+            String::default()
+        };
 
         let k_section_regex = Regex::new(r"(^[a-zA-Z0-9\._~!$&'()*+,;=:\\/@\-]*$)").unwrap();
 
-        if !k_section_regex.is_match(&result.host) {
-            return Err(format!("Invalid character in host ({})", result.host));
+        if !k_section_regex.is_match(&host) {
+            return Err(format!("Invalid character in host ({})", host));
         }
-        if !k_section_regex.is_match(&result.path) {
-            return Err(format!("Invalid character in path ({})", result.path));
+        if !k_section_regex.is_match(&path) {
+            return Err(format!("Invalid character in path ({})", path));
         }
-        if !k_section_regex.is_match(&result.query) {
-            return Err(format!("Invalid character in query ({})", result.query));
+        if !k_section_regex.is_match(&query) {
+            return Err(format!("Invalid character in query ({})", query));
         }
-        if !k_section_regex.is_match(&result.fragment) {
-            return Err(format!(
-                "Invalid character in fragment ({})",
-                result.fragment
-            ));
+        if !k_section_regex.is_match(&fragment) {
+            return Err(format!("Invalid character in fragment ({})", fragment));
         }
 
+        let result = Uri {
+            protocol,
+            host,
+            port,
+            path,
+            query,
+            fragment,
+        };
         Ok(result)
     }
 }
@@ -185,11 +203,11 @@ mod test {
 
         dbg!(&url);
 
-        assert_eq!(url.protocol(), "https");
-        assert_eq!(url.host(), "www.forbes.com");
-        assert_eq!(url.port(), "");
-        assert_eq!(url.path(), "/sites/christophersteiner/2016/09/29/how-to-hire-better-engineers-ignore-school-degrees-and-past-projects/");
-        assert_eq!(url.query(), "");
-        assert_eq!(url.fragment(), "ceda3f8360bf");
+        assert_eq!(url.protocol, "https");
+        assert_eq!(url.host, "www.forbes.com");
+        assert_eq!(url.port, "");
+        assert_eq!(url.path, "/sites/christophersteiner/2016/09/29/how-to-hire-better-engineers-ignore-school-degrees-and-past-projects/");
+        assert_eq!(url.query, "");
+        assert_eq!(url.fragment, "ceda3f8360bf");
     }
 }
