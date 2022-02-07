@@ -201,13 +201,28 @@ mod test {
 
         let url: Uri = URL.parse().unwrap();
 
-        dbg!(&url);
+        let expected = Uri::builder()
+            .protocol("https")
+            .host("www.forbes.com")
+            .path("/sites/christophersteiner/2016/09/29/how-to-hire-better-engineers-ignore-school-degrees-and-past-projects/")
+            .fragment("ceda3f8360bf")
+            .build();
 
-        assert_eq!(url.protocol, "https");
-        assert_eq!(url.host, "www.forbes.com");
-        assert_eq!(url.port, "");
-        assert_eq!(url.path, "/sites/christophersteiner/2016/09/29/how-to-hire-better-engineers-ignore-school-degrees-and-past-projects/");
-        assert_eq!(url.query, "");
-        assert_eq!(url.fragment, "ceda3f8360bf");
+        assert_eq!(url, expected);
+    }
+
+    #[test]
+    fn generate_uri_string_with_port() {
+        let uri = Uri::builder()
+            .protocol("https")
+            .host("www.foo.com")
+            .port("8080")
+            .build();
+
+        let uri_string = uri.to_string();
+
+        let expected = "https://www.foo.com:8080";
+        
+        assert_eq!(uri_string, expected);
     }
 }

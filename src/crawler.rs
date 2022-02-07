@@ -1,11 +1,23 @@
 use std::{
     collections::{HashSet, VecDeque},
-    sync::{Arc, Mutex}, thread, time::Duration,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Arc, Mutex,
+    },
+    thread,
+    time::Duration,
 };
 
 use crate::{graph::Graph, page_node::PageNode, uri::Uri};
 
-#[derive(Debug)]
+/**
+ * This is the main entry point for crawling a website
+ * ---
+ *
+ * This just stores the controlling metadata (max threads and verbosity) and the results of
+ * the site crawl, the intermediate data throughout the crawl will be given to a temporary
+ * object and communated with via channels
+ */
 pub struct Crawler {
     max_threads: usize,
     verbosity: bool,
@@ -24,76 +36,53 @@ impl Crawler {
     pub fn set_verbosity(&mut self, verbosity: bool) {
         self.verbosity = verbosity;
     }
-
-    pub fn crawl(&mut self, initial_url: &str, display_results: bool) -> &Graph {
-        let initial_uri: Uri = initial_url.parse().unwrap();
-        let mut domain = initial_uri;
-        domain.path.clear();
-        domain.query.clear();
-        domain.fragment.clear();
-
-        let data = Inner {
-            num_threads: 0,
-            domain,
-            queue: Default::default(),
-            currently_being_explored: Default::default(),
-            errors: Default::default(),
-            graph: Default::default(),
-        };
-
-        todo!()
-    }
 }
 
-#[derive(Debug)]
-struct CrawlData {
-    max_threads: usize,
-    verbosity: bool,
-    inner: Arc<Mutex<Inner>>,
+enum WorkerInput {
+    Task { id: usize, uri: Uri },
+    End,
 }
 
-impl CrawlData {
-    fn get_node_sync(&mut self, uri: &Uri) -> Option<PageNode> {
-        let inner = self.inner.lock().unwrap();
-        inner.graph.get(uri).cloned()
-    }
+enum WorkerOutput {
+    Results {
+        node: PageNode,
+        urls: Vec<String>,
+        id: usize,
+    },
 }
 
-#[derive(Debug)]
-struct Inner {
-    num_threads: usize,
-    domain: Uri,
-    queue: VecDeque<Uri>,
-    currently_being_explored: HashSet<Uri>,
-    errors: Vec<String>,
-    graph: Graph,
+struct Worker {
+    thread: thread::JoinHandle<()>,
+    input: Sender<WorkerInput>,
 }
 
-impl Inner {
-    fn enqueue(&mut self, uri: Uri, max_threads: usize) {
-        if self.graph.add_node(uri.clone()).is_none() {
-            return;
-        }
+impl Worker {
+    fn spawn(results: Sender<WorkerOutput>) -> Self {
+        let (input, tasks) = channel();
 
-        println!("Enqueueing {:?} (queue has size {})", uri, self.queue.len());
-        if self.num_threads < max_threads {
-            self.num_threads += 1;
-            self.spawn_crawling_thread(uri);
-        } else {
-            self.queue.push_back(uri);
-        }
-    }
+        let thread = thread::spawn(move || {
+            while let Ok(task) = tasks.recv() {
+                match task {
+                    WorkerInput::Task { id, uri } => {
+                        let response = get_response_sync(&uri);
+                        let node = PageNode::default();
+                        let urls = vec![];
 
-    fn spawn_crawling_thread(&mut self, uri: Uri) {
-        self.currently_being_explored.insert(uri);
+                        let result = WorkerOutput::Results { node, urls, id };
 
-        thread::sleep(Duration::from_millis(100));
-
-        let t = thread::spawn(|| {
-            
+                        results.send(result).unwrap();
+                    }
+                    WorkerInput::End => break,
+                }
+            }
         });
 
-        
-        todo!()
+        Self { input, thread }
     }
+}
+
+struct Response {}
+
+fn get_response_sync(uri: &Uri) -> Response {
+    todo!()
 }

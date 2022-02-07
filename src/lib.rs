@@ -1,14 +1,8 @@
-use std::str::FromStr;
-
-fn main() {
-    println!("Hello, world!");
-    let _uri = uri::Uri::from_str("");
-}
-
 #[allow(unused)]
 pub mod crawler;
 pub mod graph;
 pub mod html;
+pub mod http;
 pub mod page_node;
 pub mod uri;
 
@@ -38,10 +32,7 @@ mod test {
                 html::absolutize_path("./page3", "/web-crawler-test-site/test4/cynical.html"),
                 "/web-crawler-test-site/test4/page3"
             );
-            assert_eq!(
-                "SVG_logo.svg".parse::<Uri>().unwrap().path,
-                "SVG_logo.svg"
-            );
+            assert_eq!("SVG_logo.svg".parse::<Uri>().unwrap().path, "SVG_logo.svg");
             assert_eq!(
                 "./SVG_logo.svg".parse::<Uri>().unwrap().path,
                 "./SVG_logo.svg"
